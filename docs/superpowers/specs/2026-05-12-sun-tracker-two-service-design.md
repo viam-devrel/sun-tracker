@@ -189,7 +189,7 @@ Four detections are returned even in pitch black (all scores ≈ 0). The tracker
 | Method | Behavior |
 |---|---|
 | `DetectionsFromCamera(ctx, cameraName, extra)` | Resolve camera (from deps cached at constructor), grab image, dispatch to quadrant computation, return 4 detections. |
-| `Detections(ctx, img, extra)` | Same dispatch on the passed-in image — no camera read. |
+| `Detections(ctx, img, extra)` | Same dispatch on the passed-in image — no camera read. Quadrant bounding boxes are computed from `img.Bounds()`, not from any cached camera resolution, so callers may pass images of any size. |
 | `CaptureAllFromCamera(ctx, cameraName, opts, extra)` | Returns the image plus the 4 detections. Used by data manager for visualization. |
 | `GetProperties(ctx, extra)` | Returns `vision.Properties{DetectionSupported: true, ClassificationSupported: false, ObjectPCDsSupported: false}`. |
 | `Classifications`, `ClassificationsFromCamera`, `GetObjectPointClouds` | Return `errUnimplemented` sentinel. |
@@ -264,7 +264,7 @@ type Config struct {
 | `LoopHz` | 10 |
 | `MaxStepDegs` | 5.0 |
 
-The `Camera` field carries the camera **name** even though the tracker doesn't depend on the camera directly: `DetectionsFromCamera` is keyed by name, and we'd rather have a redundant config string than teach the tracker to introspect the vision service's config.
+The `Camera` field carries the camera **name** even though the tracker doesn't depend on the camera directly: `DetectionsFromCamera` is keyed by name, and we'd rather have a redundant config string than teach the tracker to introspect the vision service's config. The robot-level `depends_on` list (§8) also names the camera on the tracker for startup ordering — both references are intentional and should be kept in sync.
 
 ### 6.2 Control loop tick
 
@@ -277,7 +277,7 @@ Per-tick logic, extracted into a private `step(ctx, now)` method so it's testabl
 5. If `brightness < cfg.MinBrightness`: update state (`pan_err`, `tilt_err`, `brightness`, `locked=false`, current angles), return.
 6. Compute `dt = now − prevTime`. First call: `dt = 1.0 / LoopHz`. Update `prevTime`.
 7. `panStep = control(pan_err, prevPanErr, dt, Kp, Kd, Deadband, MaxStepDegs)` — likewise `tiltStep`. Update `prevPanErr`, `prevTiltErr`.
-8. `locked = (panStep == 0 && tiltStep == 0)`. If locked, skip `Move`; still read current positions for state. Otherwise compute new targets and call `Move` per axis.
+8. `locked = (panStep == 0 && tiltStep == 0)`. If locked, skip `Move`; still attempt to read current positions for state. If a `Position` read fails on either axis, leave that axis's `pan_deg`/`tilt_deg` field unchanged from its previous value (do not zero it). Otherwise compute new targets and call `Move` per axis.
 9. Update state under `Lock`.
 
 ### 6.3 DoCommand verbs
@@ -286,7 +286,7 @@ Per-tick logic, extracted into a private `step(ctx, now)` method so it's testabl
 |---|---|---|
 | `{"get_state": true}` | Snapshot of state under `RLock`. | `{pan_error, tilt_error, pan_deg, tilt_deg, brightness, locked, enabled, last_update}` (`last_update` as `UnixMilli`). |
 | `{"enabled": <bool>}` | Set enabled flag under `Lock`. Mid-tick callers complete normally; next tick sees the change. | `{"enabled": v}`. |
-| `{"recenter": true}` | Drive both servos to 90°. Logs Info if `enabled == true` (recenter races the loop, accepted as a debug verb). | `{"recentered": true}`. |
+| `{"recenter": true}` | Drive both servos to 90°. Logs Info if `enabled == true` (recenter races the loop, accepted as a debug verb). Does not touch PD memory (`prevPanErr`, `prevTiltErr`, `prevTime`) — the first post-recenter tick may therefore produce a larger-than-usual step against an old `prev_err`, which is acceptable for a debug verb. | `{"recentered": true}`. |
 | Anything else | `resource.ErrDoUnimplemented`. |
 
 ### 6.4 Recommended data-capture config
