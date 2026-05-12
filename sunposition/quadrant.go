@@ -1,6 +1,10 @@
 package sunposition
 
-import "image"
+import (
+	"image"
+
+	objdet "go.viam.com/rdk/vision/objectdetection"
+)
 
 // quadrantGeneric returns mean-luma per quadrant (TL, TR, BL, BR) and overall
 // mean luma, each normalized to [0, 1] (255 → 1.0). Slow path: uses At().RGBA()
@@ -45,4 +49,39 @@ func quadrantGeneric(img image.Image) (tl, tr, bl, br, brightness float64) {
 		brightness = (total / float64(totalCount)) / 255.0
 	}
 	return
+}
+
+// quadrantError dispatches to a type-specific implementation. Returns mean-luma
+// per quadrant (TL, TR, BL, BR) and overall mean — all normalized to [0,1].
+func quadrantError(img image.Image) (tl, tr, bl, br, brightness float64) {
+	switch t := img.(type) {
+	// YCbCr and Gray fast paths added in later tasks.
+	default:
+		_ = t
+		return quadrantGeneric(img)
+	}
+}
+
+// buildDetections returns four detections in fixed order TL, TR, BL, BR with
+// stable labels. Quadrant rectangles split the bounds at the midpoint.
+func buildDetections(bounds image.Rectangle, tl, tr, bl, br float64) []objdet.Detection {
+	midX := (bounds.Min.X + bounds.Max.X) / 2
+	midY := (bounds.Min.Y + bounds.Max.Y) / 2
+
+	quads := []struct {
+		label string
+		rect  image.Rectangle
+		score float64
+	}{
+		{"top-left", image.Rect(bounds.Min.X, bounds.Min.Y, midX, midY), tl},
+		{"top-right", image.Rect(midX, bounds.Min.Y, bounds.Max.X, midY), tr},
+		{"bottom-left", image.Rect(bounds.Min.X, midY, midX, bounds.Max.Y), bl},
+		{"bottom-right", image.Rect(midX, midY, bounds.Max.X, bounds.Max.Y), br},
+	}
+	out := make([]objdet.Detection, 0, 4)
+	for _, q := range quads {
+		rect := q.rect
+		out = append(out, objdet.NewDetection(bounds, rect, q.score, q.label))
+	}
+	return out
 }

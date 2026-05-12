@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"testing"
 
+	objdet "go.viam.com/rdk/vision/objectdetection"
 	"go.viam.com/test"
 )
 
@@ -68,4 +69,29 @@ func TestQuadrantGeneric_UniformImage(t *testing.T) {
 	test.That(t, tl-br, test.ShouldAlmostEqual, 0.0, 0.01)
 	// 128/255 ≈ 0.50.
 	test.That(t, brightness, test.ShouldAlmostEqual, 0.5, 0.01)
+}
+
+func TestBuildDetections_FourInFixedOrder(t *testing.T) {
+	bounds := image.Rect(0, 0, 200, 100)
+	dets := buildDetections(bounds, 0.10, 0.80, 0.30, 0.50)
+
+	test.That(t, len(dets), test.ShouldEqual, 4)
+
+	expected := []struct {
+		label string
+		score float64
+		rect  image.Rectangle
+	}{
+		{"top-left", 0.10, image.Rect(0, 0, 100, 50)},
+		{"top-right", 0.80, image.Rect(100, 0, 200, 50)},
+		{"bottom-left", 0.30, image.Rect(0, 50, 100, 100)},
+		{"bottom-right", 0.50, image.Rect(100, 50, 200, 100)},
+	}
+	for i, want := range expected {
+		test.That(t, dets[i].Label(), test.ShouldEqual, want.label)
+		test.That(t, dets[i].Score(), test.ShouldAlmostEqual, want.score, 1e-9)
+		bb := dets[i].BoundingBox()
+		test.That(t, *bb, test.ShouldResemble, want.rect)
+	}
+	_ = objdet.Detection(nil) // silence unused import if dropped
 }
