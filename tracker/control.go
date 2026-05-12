@@ -1,6 +1,10 @@
 package tracker
 
-import "math"
+import (
+	"math"
+
+	objdet "go.viam.com/rdk/vision/objectdetection"
+)
 
 // control returns a step in degrees (signed). Returns 0 inside the deadband.
 // dt=0 (first call) skips the derivative term.
@@ -38,4 +42,46 @@ func stepClamp(current uint32, delta float64, lo, hi uint32) uint32 {
 		target = int(hi)
 	}
 	return uint32(target)
+}
+
+// detectionsToErrors converts the 4-detection vision output into pan/tilt
+// imbalance fractions and a 0-255 brightness proxy. Returns ok=false if the
+// detection set is malformed (wrong count or unrecognized label).
+func detectionsToErrors(dets []objdet.Detection) (panErr, tiltErr, brightness float64, ok bool) {
+	if len(dets) != 4 {
+		return 0, 0, 0, false
+	}
+	var tl, tr, bl, br float64
+	var seen [4]bool
+	for _, d := range dets {
+		switch d.Label() {
+		case "top-left":
+			tl = d.Score()
+			seen[0] = true
+		case "top-right":
+			tr = d.Score()
+			seen[1] = true
+		case "bottom-left":
+			bl = d.Score()
+			seen[2] = true
+		case "bottom-right":
+			br = d.Score()
+			seen[3] = true
+		default:
+			return 0, 0, 0, false
+		}
+	}
+	for _, s := range seen {
+		if !s {
+			return 0, 0, 0, false
+		}
+	}
+	total := tl + tr + bl + br
+	brightness = (total / 4.0) * 255.0
+	if total == 0 {
+		return 0, 0, brightness, true
+	}
+	panErr = (tr + br - tl - bl) / total
+	tiltErr = (tl + tr - bl - br) / total
+	return panErr, tiltErr, brightness, true
 }
