@@ -1,32 +1,21 @@
 package suntracker
 
 import (
-  vision "go.viam.com/rdk/services/vision"
-  "bytes"
-"context"
-"fmt"
-"image"
-"github.com/pkg/errors"
-commonpb "go.viam.com/api/common/v1"
-pb "go.viam.com/api/service/vision/v1"
-"go.viam.com/utils/protoutils"
-"go.viam.com/utils/rpc"
-"go.viam.com/utils/trace"
-"go.viam.com/rdk/components/camera"
-"go.viam.com/rdk/data"
-"go.viam.com/rdk/logging"
-"go.viam.com/rdk/pointcloud"
-rprotoutils "go.viam.com/rdk/protoutils"
-"go.viam.com/rdk/resource"
-"go.viam.com/rdk/utils"
-vis "go.viam.com/rdk/vision"
-"go.viam.com/rdk/vision/classification"
-objdet "go.viam.com/rdk/vision/objectdetection"
-"go.viam.com/rdk/vision/viscapture"
+	"context"
+
+	"github.com/pkg/errors"
+	"go.viam.com/rdk/components/camera"
+	"go.viam.com/rdk/logging"
+	"go.viam.com/rdk/resource"
+	vision "go.viam.com/rdk/services/vision"
+	vis "go.viam.com/rdk/vision"
+	"go.viam.com/rdk/vision/classification"
+	objdet "go.viam.com/rdk/vision/objectdetection"
+	"go.viam.com/rdk/vision/viscapture"
 )
 
 var (
-	SunPosition = resource.NewModel("devrel", "sun-tracker", "sun-position")
+	SunPosition      = resource.NewModel("devrel", "sun-tracker", "sun-position")
 	errUnimplemented = errors.New("unimplemented")
 )
 
@@ -40,41 +29,41 @@ func init() {
 
 type Config struct {
 	/*
-	Put config attributes here. There should be public/exported fields
-	with a `json` parameter at the end of each attribute.
+		Put config attributes here. There should be public/exported fields
+		with a `json` parameter at the end of each attribute.
 
-	Example config struct:
-		type Config struct {
-			Pin   string `json:"pin"`
-			Board string `json:"board"`
-			MinDeg *float64 `json:"min_angle_deg,omitempty"`
-		}
+		Example config struct:
+			type Config struct {
+				Pin   string `json:"pin"`
+				Board string `json:"board"`
+				MinDeg *float64 `json:"min_angle_deg,omitempty"`
+			}
 
-	If your model does not need a config, replace *Config in the init
-	function with resource.NoNativeConfig
+		If your model does not need a config, replace *Config in the init
+		function with resource.NoNativeConfig
 	*/
 }
 
 // Validate ensures all parts of the config are valid and important fields exist.
 // Returns three values:
-//   1. Required dependencies: other resources that must exist for this resource to work.
-//   2. Optional dependencies: other resources that may exist but are not required.
-//   3. An error if any Config fields are missing or invalid.
+//  1. Required dependencies: other resources that must exist for this resource to work.
+//  2. Optional dependencies: other resources that may exist but are not required.
+//  3. An error if any Config fields are missing or invalid.
 //
 // The `path` parameter indicates
 // where this resource appears in the machine's JSON configuration
-// (for example, "components.0"). You can use it in error messages 
+// (for example, "components.0"). You can use it in error messages
 // to indicate which resource has a problem.
 func (cfg *Config) Validate(path string) ([]string, []string, error) {
 	// Add config validation code here
-	 return nil, nil, nil
+	return nil, nil, nil
 }
 
 type sunTrackerSunPosition struct {
 	resource.AlwaysRebuild
 	resource.Named
 
-	name   resource.Name
+	name resource.Name
 
 	logger logging.Logger
 	cfg    *Config
@@ -89,7 +78,7 @@ func newSunTrackerSunPosition(ctx context.Context, deps resource.Dependencies, r
 		return nil, err
 	}
 
-    return NewSunPosition(ctx, deps, rawConf.ResourceName(), conf, logger)
+	return NewSunPosition(ctx, deps, rawConf.ResourceName(), conf, logger)
 
 }
 
@@ -113,55 +102,53 @@ func (s *sunTrackerSunPosition) Name() resource.Name {
 
 // DetectionsFromCamera returns a list of detections from the next image from a specified camera using a configured detector.
 func (s *sunTrackerSunPosition) DetectionsFromCamera(ctx context.Context, cameraName string, extra map[string]interface{}) ([]objdet.Detection, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, errUnimplemented
 }
 
- // Detections returns a list of detections from a given image using a configured detector.
+// Detections returns a list of detections from a given image using a configured detector.
 func (s *sunTrackerSunPosition) Detections(ctx context.Context, img *camera.NamedImage, extra map[string]interface{}) ([]objdet.Detection, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, errUnimplemented
 }
 
- // ClassificationsFromCamera returns a list of classifications from the next image from a specified camera using a configured classifier.
+// ClassificationsFromCamera returns a list of classifications from the next image from a specified camera using a configured classifier.
 func (s *sunTrackerSunPosition) ClassificationsFromCamera(ctx context.Context, cameraName string, n int, extra map[string]interface{}) (classification.Classifications, error) {
 	var classificationsRetVal classification.Classifications
 
-	return classificationsRetVal, fmt.Errorf("not implemented")
+	return classificationsRetVal, errUnimplemented
 }
 
- // Classifications returns a list of classifications from a given image using a configured classifier.
+// Classifications returns a list of classifications from a given image using a configured classifier.
 func (s *sunTrackerSunPosition) Classifications(ctx context.Context, img *camera.NamedImage, n int, extra map[string]interface{}) (classification.Classifications, error) {
 	var classificationsRetVal classification.Classifications
 
-	return classificationsRetVal, fmt.Errorf("not implemented")
+	return classificationsRetVal, errUnimplemented
 }
 
- // GetObjectPointClouds returns a list of 3D point cloud objects and metadata from the latest 3D camera image using a specified segmenter.
+// GetObjectPointClouds returns a list of 3D point cloud objects and metadata from the latest 3D camera image using a specified segmenter.
 func (s *sunTrackerSunPosition) GetObjectPointClouds(ctx context.Context, cameraName string, extra map[string]interface{}) ([]*vis.Object, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, errUnimplemented
 }
 
- // properties
+// properties
 func (s *sunTrackerSunPosition) GetProperties(ctx context.Context, extra map[string]interface{}) (*vision.Properties, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, errUnimplemented
 }
 
- // CaptureAllFromCamera returns the next image, detections, classifications, and objects all together, given a camera name. Used for
+// CaptureAllFromCamera returns the next image, detections, classifications, and objects all together, given a camera name. Used for
 // visualization.
 func (s *sunTrackerSunPosition) CaptureAllFromCamera(ctx context.Context, cameraName string, captureOptions viscapture.CaptureOptions, extra map[string]interface{}) (viscapture.VisCapture, error) {
 	var visCaptureRetVal viscapture.VisCapture
 
-	return visCaptureRetVal, fmt.Errorf("not implemented")
+	return visCaptureRetVal, errUnimplemented
 }
 
- func (s *sunTrackerSunPosition) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
-	return nil, fmt.Errorf("not implemented")
+func (s *sunTrackerSunPosition) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
+	return nil, errUnimplemented
 }
 
- func (s *sunTrackerSunPosition) Status(ctx context.Context) (map[string]interface{}, error) {
-	return nil, fmt.Errorf("not implemented")
+func (s *sunTrackerSunPosition) Status(ctx context.Context) (map[string]interface{}, error) {
+	return nil, errUnimplemented
 }
-
-
 
 func (s *sunTrackerSunPosition) Close(context.Context) error {
 	// Put close code here
