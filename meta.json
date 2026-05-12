@@ -3,9 +3,21 @@
   "module_id": "devrel:sun-tracker",
   "visibility": "public",
   "url": "",
-  "description": "Modular vision service: sun-position",
+  "description": "Sun tracker: brightness-quadrant vision service + servo pan/tilt tracker",
   "applications": null,
   "markdown_link": "README.md",
+  "models": [
+    {
+      "api": "rdk:service:vision",
+      "model": "devrel:sun-tracker:sun-position",
+      "markdown_link": "README.md"
+    },
+    {
+      "api": "rdk:service:generic",
+      "model": "devrel:sun-tracker:sun-servo-tracker",
+      "markdown_link": "README.md"
+    }
+  ],
   "entrypoint": "bin/sun-tracker",
   "first_run": "",
   "build": {
