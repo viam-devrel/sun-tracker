@@ -3,6 +3,7 @@ package sunposition
 import (
 	"image"
 	"image/color"
+	"image/draw"
 	"testing"
 
 	objdet "go.viam.com/rdk/vision/objectdetection"
@@ -94,4 +95,74 @@ func TestBuildDetections_FourInFixedOrder(t *testing.T) {
 		test.That(t, *bb, test.ShouldResemble, want.rect)
 	}
 	_ = objdet.Detection(nil) // silence unused import if dropped
+}
+
+// ycbcrFromRGBA converts an RGBA test image to a *image.YCbCr at full chroma
+// resolution so test inputs match exactly.
+func ycbcrFromRGBA(t *testing.T, src *image.RGBA) *image.YCbCr {
+	t.Helper()
+	ycbcr := image.NewYCbCr(src.Bounds(), image.YCbCrSubsampleRatio444)
+	for y := src.Bounds().Min.Y; y < src.Bounds().Max.Y; y++ {
+		for x := src.Bounds().Min.X; x < src.Bounds().Max.X; x++ {
+			r, g, b, _ := src.At(x, y).RGBA()
+			yy, cb, cr := rgbToYCbCr(uint8(r>>8), uint8(g>>8), uint8(b>>8))
+			yi := ycbcr.YOffset(x, y)
+			ci := ycbcr.COffset(x, y)
+			ycbcr.Y[yi] = yy
+			ycbcr.Cb[ci] = cb
+			ycbcr.Cr[ci] = cr
+		}
+	}
+	_ = draw.Draw // silence unused if draw becomes unused
+	return ycbcr
+}
+
+// Same conversion the stdlib uses (image/color/ycbcr.go).
+func rgbToYCbCr(r, g, b uint8) (uint8, uint8, uint8) {
+	fr := float64(r)
+	fg := float64(g)
+	fb := float64(b)
+	y := 0.299*fr + 0.587*fg + 0.114*fb
+	cb := -0.168736*fr - 0.331264*fg + 0.5*fb + 128
+	cr := 0.5*fr - 0.418688*fg - 0.081312*fb + 128
+	clip := func(v float64) uint8 {
+		switch {
+		case v < 0:
+			return 0
+		case v > 255:
+			return 255
+		default:
+			return uint8(v)
+		}
+	}
+	return clip(y), clip(cb), clip(cr)
+}
+
+func TestQuadrantYCbCr_ParityWithGeneric(t *testing.T) {
+	rgba := newRGBAWithBrightTR()
+	ycbcr := ycbcrFromRGBA(t, rgba)
+
+	gtl, gtr, gbl, gbr, gbright := quadrantGeneric(rgba)
+	ytl, ytr, ybl, ybr, ybright := quadrantYCbCr(ycbcr)
+
+	// Conversion + integer rounding can introduce small differences. 0.01 = 2.5/255 luma drift max.
+	test.That(t, ytl, test.ShouldAlmostEqual, gtl, 0.01)
+	test.That(t, ytr, test.ShouldAlmostEqual, gtr, 0.01)
+	test.That(t, ybl, test.ShouldAlmostEqual, gbl, 0.01)
+	test.That(t, ybr, test.ShouldAlmostEqual, gbr, 0.01)
+	test.That(t, ybright, test.ShouldAlmostEqual, gbright, 0.01)
+}
+
+func TestQuadrantYCbCr_SubImageView(t *testing.T) {
+	full := image.NewYCbCr(image.Rect(0, 0, 200, 200), image.YCbCrSubsampleRatio444)
+	for i := range full.Y {
+		full.Y[i] = 128
+	}
+	sub := full.SubImage(image.Rect(100, 100, 200, 200)).(*image.YCbCr)
+	tl, tr, bl, br, brightness := quadrantYCbCr(sub)
+	test.That(t, tl, test.ShouldAlmostEqual, 128.0/255.0, 0.01)
+	test.That(t, tr, test.ShouldAlmostEqual, 128.0/255.0, 0.01)
+	test.That(t, bl, test.ShouldAlmostEqual, 128.0/255.0, 0.01)
+	test.That(t, br, test.ShouldAlmostEqual, 128.0/255.0, 0.01)
+	test.That(t, brightness, test.ShouldAlmostEqual, 128.0/255.0, 0.01)
 }
