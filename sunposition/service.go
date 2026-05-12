@@ -1,4 +1,4 @@
-package suntracker
+package sunposition
 
 import (
 	"context"
@@ -15,14 +15,14 @@ import (
 )
 
 var (
-	SunPosition      = resource.NewModel("devrel", "sun-tracker", "sun-position")
+	Model            = resource.NewModel("devrel", "sun-tracker", "sun-position")
 	errUnimplemented = errors.New("unimplemented")
 )
 
 func init() {
-	resource.RegisterService(vision.API, SunPosition,
+	resource.RegisterService(vision.API, Model,
 		resource.Registration[vision.Service, *Config]{
-			Constructor: newSunTrackerSunPosition,
+			Constructor: newService,
 		},
 	)
 }
@@ -59,7 +59,7 @@ func (cfg *Config) Validate(path string) ([]string, []string, error) {
 	return nil, nil, nil
 }
 
-type sunTrackerSunPosition struct {
+type service struct {
 	resource.AlwaysRebuild
 	resource.Named
 
@@ -72,21 +72,19 @@ type sunTrackerSunPosition struct {
 	cancelFunc func()
 }
 
-func newSunTrackerSunPosition(ctx context.Context, deps resource.Dependencies, rawConf resource.Config, logger logging.Logger) (vision.Service, error) {
+func newService(ctx context.Context, deps resource.Dependencies, rawConf resource.Config, logger logging.Logger) (vision.Service, error) {
 	conf, err := resource.NativeConfig[*Config](rawConf)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewSunPosition(ctx, deps, rawConf.ResourceName(), conf, logger)
-
+	return NewService(ctx, deps, rawConf.ResourceName(), conf, logger)
 }
 
-func NewSunPosition(ctx context.Context, deps resource.Dependencies, name resource.Name, conf *Config, logger logging.Logger) (vision.Service, error) {
-
+func NewService(ctx context.Context, deps resource.Dependencies, name resource.Name, conf *Config, logger logging.Logger) (vision.Service, error) {
 	cancelCtx, cancelFunc := context.WithCancel(context.Background())
 
-	s := &sunTrackerSunPosition{
+	s := &service{
 		name:       name,
 		logger:     logger,
 		cfg:        conf,
@@ -96,61 +94,61 @@ func NewSunPosition(ctx context.Context, deps resource.Dependencies, name resour
 	return s, nil
 }
 
-func (s *sunTrackerSunPosition) Name() resource.Name {
+func (s *service) Name() resource.Name {
 	return s.name
 }
 
 // DetectionsFromCamera returns a list of detections from the next image from a specified camera using a configured detector.
-func (s *sunTrackerSunPosition) DetectionsFromCamera(ctx context.Context, cameraName string, extra map[string]interface{}) ([]objdet.Detection, error) {
+func (s *service) DetectionsFromCamera(ctx context.Context, cameraName string, extra map[string]interface{}) ([]objdet.Detection, error) {
 	return nil, errUnimplemented
 }
 
 // Detections returns a list of detections from a given image using a configured detector.
-func (s *sunTrackerSunPosition) Detections(ctx context.Context, img *camera.NamedImage, extra map[string]interface{}) ([]objdet.Detection, error) {
+func (s *service) Detections(ctx context.Context, img *camera.NamedImage, extra map[string]interface{}) ([]objdet.Detection, error) {
 	return nil, errUnimplemented
 }
 
 // ClassificationsFromCamera returns a list of classifications from the next image from a specified camera using a configured classifier.
-func (s *sunTrackerSunPosition) ClassificationsFromCamera(ctx context.Context, cameraName string, n int, extra map[string]interface{}) (classification.Classifications, error) {
+func (s *service) ClassificationsFromCamera(ctx context.Context, cameraName string, n int, extra map[string]interface{}) (classification.Classifications, error) {
 	var classificationsRetVal classification.Classifications
 
 	return classificationsRetVal, errUnimplemented
 }
 
 // Classifications returns a list of classifications from a given image using a configured classifier.
-func (s *sunTrackerSunPosition) Classifications(ctx context.Context, img *camera.NamedImage, n int, extra map[string]interface{}) (classification.Classifications, error) {
+func (s *service) Classifications(ctx context.Context, img *camera.NamedImage, n int, extra map[string]interface{}) (classification.Classifications, error) {
 	var classificationsRetVal classification.Classifications
 
 	return classificationsRetVal, errUnimplemented
 }
 
 // GetObjectPointClouds returns a list of 3D point cloud objects and metadata from the latest 3D camera image using a specified segmenter.
-func (s *sunTrackerSunPosition) GetObjectPointClouds(ctx context.Context, cameraName string, extra map[string]interface{}) ([]*vis.Object, error) {
+func (s *service) GetObjectPointClouds(ctx context.Context, cameraName string, extra map[string]interface{}) ([]*vis.Object, error) {
 	return nil, errUnimplemented
 }
 
 // properties
-func (s *sunTrackerSunPosition) GetProperties(ctx context.Context, extra map[string]interface{}) (*vision.Properties, error) {
+func (s *service) GetProperties(ctx context.Context, extra map[string]interface{}) (*vision.Properties, error) {
 	return nil, errUnimplemented
 }
 
 // CaptureAllFromCamera returns the next image, detections, classifications, and objects all together, given a camera name. Used for
 // visualization.
-func (s *sunTrackerSunPosition) CaptureAllFromCamera(ctx context.Context, cameraName string, captureOptions viscapture.CaptureOptions, extra map[string]interface{}) (viscapture.VisCapture, error) {
+func (s *service) CaptureAllFromCamera(ctx context.Context, cameraName string, captureOptions viscapture.CaptureOptions, extra map[string]interface{}) (viscapture.VisCapture, error) {
 	var visCaptureRetVal viscapture.VisCapture
 
 	return visCaptureRetVal, errUnimplemented
 }
 
-func (s *sunTrackerSunPosition) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
+func (s *service) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
 	return nil, errUnimplemented
 }
 
-func (s *sunTrackerSunPosition) Status(ctx context.Context) (map[string]interface{}, error) {
+func (s *service) Status(ctx context.Context) (map[string]interface{}, error) {
 	return nil, errUnimplemented
 }
 
-func (s *sunTrackerSunPosition) Close(context.Context) error {
+func (s *service) Close(context.Context) error {
 	// Put close code here
 	s.cancelFunc()
 	return nil

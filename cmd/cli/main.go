@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/viam-devrel/sun-tracker"
+	"github.com/viam-devrel/sun-tracker/sunposition"
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/resource"
 	vision "go.viam.com/rdk/services/vision"
@@ -22,9 +22,9 @@ func realMain() error {
 	deps := resource.Dependencies{}
 	// can load these from a remote machine if you need
 
-	cfg := suntracker.Config{}
+	cfg := sunposition.Config{}
 
-	thing, err := suntracker.NewSunPosition(ctx, deps, vision.Named("foo"), &cfg, logger)
+	thing, err := sunposition.NewService(ctx, deps, vision.Named("foo"), &cfg, logger)
 	if err != nil {
 		return err
 	}
