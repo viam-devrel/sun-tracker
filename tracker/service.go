@@ -229,5 +229,44 @@ func (s *service) Close(ctx context.Context) error {
 }
 
 func (s *service) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
+	if _, ok := cmd["get_state"]; ok {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+		return map[string]interface{}{
+			"pan_error":   s.state.PanErr,
+			"tilt_error":  s.state.TiltErr,
+			"pan_deg":     s.state.PanDeg,
+			"tilt_deg":    s.state.TiltDeg,
+			"brightness":  s.state.Brightness,
+			"locked":      s.state.Locked,
+			"enabled":     s.state.Enabled,
+			"last_update": s.state.LastUpdate.UnixMilli(),
+		}, nil
+	}
+	if v, ok := cmd["enabled"]; ok {
+		b, ok := v.(bool)
+		if !ok {
+			return nil, errors.New(`"enabled" must be a boolean`)
+		}
+		s.mu.Lock()
+		s.state.Enabled = b
+		s.mu.Unlock()
+		return map[string]interface{}{"enabled": b}, nil
+	}
+	if _, ok := cmd["recenter"]; ok {
+		s.mu.RLock()
+		wasEnabled := s.state.Enabled
+		s.mu.RUnlock()
+		if wasEnabled {
+			s.logger.Info("recenter while enabled — racing with control loop")
+		}
+		if err := s.pan.Move(ctx, 90, nil); err != nil {
+			return nil, err
+		}
+		if err := s.tilt.Move(ctx, 90, nil); err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{"recentered": true}, nil
+	}
 	return nil, resource.ErrDoUnimplemented
 }

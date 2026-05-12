@@ -160,3 +160,61 @@ func TestStep_BrightInTopRight_MovesPanRight(t *testing.T) {
 	s.mu.RUnlock()
 	test.That(t, pe, test.ShouldBeGreaterThan, 0.0)
 }
+
+func TestDoCommand_GetState(t *testing.T) {
+	vis := newStubVision("v")
+	pan := newStubServo("p", 90)
+	tilt := newStubServo("t", 90)
+	vis.setDets(brightTRDets(t))
+	s := buildTestService(t, vis, pan, tilt)
+
+	s.step(context.Background(), time.Now())
+
+	out, err := s.DoCommand(context.Background(), map[string]interface{}{"get_state": true})
+	test.That(t, err, test.ShouldBeNil)
+	test.That(t, out["enabled"], test.ShouldEqual, true)
+	test.That(t, out["pan_error"].(float64), test.ShouldBeGreaterThan, 0.0)
+	_, ok := out["last_update"]
+	test.That(t, ok, test.ShouldBeTrue)
+}
+
+func TestDoCommand_EnabledFalse_StopsMoves(t *testing.T) {
+	vis := newStubVision("v")
+	pan := newStubServo("p", 90)
+	tilt := newStubServo("t", 90)
+	vis.setDets(brightTRDets(t))
+	s := buildTestService(t, vis, pan, tilt)
+
+	_, err := s.DoCommand(context.Background(), map[string]interface{}{"enabled": false})
+	test.That(t, err, test.ShouldBeNil)
+
+	before := pan.moveCount()
+	s.step(context.Background(), time.Now())
+	after := pan.moveCount()
+	test.That(t, after, test.ShouldEqual, before)
+}
+
+func TestDoCommand_Recenter(t *testing.T) {
+	vis := newStubVision("v")
+	pan := newStubServo("p", 30)
+	tilt := newStubServo("t", 30)
+	s := buildTestService(t, vis, pan, tilt)
+
+	out, err := s.DoCommand(context.Background(), map[string]interface{}{"recenter": true})
+	test.That(t, err, test.ShouldBeNil)
+	test.That(t, out["recentered"], test.ShouldEqual, true)
+	pos, _ := pan.Position(context.Background(), nil)
+	test.That(t, pos, test.ShouldEqual, uint32(90))
+	pos, _ = tilt.Position(context.Background(), nil)
+	test.That(t, pos, test.ShouldEqual, uint32(90))
+}
+
+func TestDoCommand_UnknownReturnsUnimplemented(t *testing.T) {
+	vis := newStubVision("v")
+	pan := newStubServo("p", 90)
+	tilt := newStubServo("t", 90)
+	s := buildTestService(t, vis, pan, tilt)
+
+	_, err := s.DoCommand(context.Background(), map[string]interface{}{"frobnicate": "yes"})
+	test.That(t, err, test.ShouldEqual, resource.ErrDoUnimplemented)
+}
