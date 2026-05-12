@@ -166,3 +166,16 @@ func TestQuadrantYCbCr_SubImageView(t *testing.T) {
 	test.That(t, br, test.ShouldAlmostEqual, 128.0/255.0, 0.01)
 	test.That(t, brightness, test.ShouldAlmostEqual, 128.0/255.0, 0.01)
 }
+
+func TestQuadrantGray_BrightBottomLeft(t *testing.T) {
+	img := image.NewGray(image.Rect(0, 0, 100, 100))
+	for y := 50; y < 100; y++ {
+		for x := 0; x < 50; x++ {
+			img.SetGray(x, y, color.Gray{255})
+		}
+	}
+	tl, tr, bl, br, _ := quadrantGray(img)
+	test.That(t, bl, test.ShouldBeGreaterThan, tl)
+	test.That(t, bl, test.ShouldBeGreaterThan, tr)
+	test.That(t, bl, test.ShouldBeGreaterThan, br)
+}
