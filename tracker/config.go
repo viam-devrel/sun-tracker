@@ -13,15 +13,15 @@ type Config struct {
 	Deadband      float64 `json:"deadband,omitempty"`
 	MinBrightness float64 `json:"min_brightness,omitempty"` // 0-255 mean luma
 
-	PanSign       int    `json:"pan_sign,omitempty"`
-	TiltSign      int    `json:"tilt_sign,omitempty"`
-	PanMin        uint32 `json:"pan_min,omitempty"`
-	PanMax        uint32 `json:"pan_max,omitempty"`
-	TiltMin       uint32 `json:"tilt_min,omitempty"`
-	TiltMax       uint32 `json:"tilt_max,omitempty"`
+	PanSign  int    `json:"pan_sign,omitempty"`
+	TiltSign int    `json:"tilt_sign,omitempty"`
+	PanMin   uint32 `json:"pan_min,omitempty"`
+	PanMax   uint32 `json:"pan_max,omitempty"`
+	TiltMin  uint32 `json:"tilt_min,omitempty"`
+	TiltMax  uint32 `json:"tilt_max,omitempty"`
 
-	LoopHz       float64 `json:"loop_hz,omitempty"`
-	MaxStepDegs  float64 `json:"max_step_degs,omitempty"`
+	LoopHz      float64 `json:"loop_hz,omitempty"`
+	MaxStepDegs float64 `json:"max_step_degs,omitempty"`
 }
 
 func (c *Config) Validate(path string) ([]string, []string, error) {

@@ -5,8 +5,8 @@ import (
 	"math"
 	"testing"
 
-	"go.viam.com/test"
 	objdet "go.viam.com/rdk/vision/objectdetection"
+	"go.viam.com/test"
 )
 
 func TestControl_DeadbandReturnsZero(t *testing.T) {
