@@ -218,3 +218,66 @@ func TestDoCommand_UnknownReturnsUnimplemented(t *testing.T) {
 	_, err := s.DoCommand(context.Background(), map[string]interface{}{"frobnicate": "yes"})
 	test.That(t, err, test.ShouldEqual, resource.ErrDoUnimplemented)
 }
+
+func TestStep_BelowBrightnessFloor_NoMove(t *testing.T) {
+	vis := newStubVision("v")
+	pan := newStubServo("p", 90)
+	tilt := newStubServo("t", 90)
+	// All scores small → brightness < default MinBrightness (30/255 ≈ 0.118)
+	bounds := image.Rect(0, 0, 100, 100)
+	vis.setDets([]objdet.Detection{
+		objdet.NewDetection(bounds, image.Rect(0, 0, 50, 50), 0.01, "top-left"),
+		objdet.NewDetection(bounds, image.Rect(50, 0, 100, 50), 0.02, "top-right"),
+		objdet.NewDetection(bounds, image.Rect(0, 50, 50, 100), 0.01, "bottom-left"),
+		objdet.NewDetection(bounds, image.Rect(50, 50, 100, 100), 0.01, "bottom-right"),
+	})
+	s := buildTestService(t, vis, pan, tilt)
+
+	s.step(context.Background(), time.Now())
+
+	test.That(t, pan.moveCount(), test.ShouldEqual, 0)
+	test.That(t, tilt.moveCount(), test.ShouldEqual, 0)
+	s.mu.RLock()
+	locked := s.state.Locked
+	s.mu.RUnlock()
+	test.That(t, locked, test.ShouldBeFalse)
+}
+
+func TestStep_InsideDeadband_LockedNoMove(t *testing.T) {
+	vis := newStubVision("v")
+	pan := newStubServo("p", 90)
+	tilt := newStubServo("t", 90)
+	// Slight imbalance, well inside deadband (default 0.05).
+	bounds := image.Rect(0, 0, 100, 100)
+	vis.setDets([]objdet.Detection{
+		objdet.NewDetection(bounds, image.Rect(0, 0, 50, 50), 0.50, "top-left"),
+		objdet.NewDetection(bounds, image.Rect(50, 0, 100, 50), 0.51, "top-right"),
+		objdet.NewDetection(bounds, image.Rect(0, 50, 50, 100), 0.50, "bottom-left"),
+		objdet.NewDetection(bounds, image.Rect(50, 50, 100, 100), 0.50, "bottom-right"),
+	})
+	s := buildTestService(t, vis, pan, tilt)
+
+	s.step(context.Background(), time.Now())
+
+	test.That(t, pan.moveCount(), test.ShouldEqual, 0)
+	test.That(t, tilt.moveCount(), test.ShouldEqual, 0)
+	s.mu.RLock()
+	locked := s.state.Locked
+	s.mu.RUnlock()
+	test.That(t, locked, test.ShouldBeTrue)
+}
+
+func TestStep_PanSignFlip_InvertsDirection(t *testing.T) {
+	vis := newStubVision("v")
+	pan := newStubServo("p", 90)
+	tilt := newStubServo("t", 90)
+	vis.setDets(brightTRDets(t))
+	s := buildTestService(t, vis, pan, tilt)
+	s.cfg.PanSign = -1 // flip pan
+
+	s.step(context.Background(), time.Now())
+
+	// pan_err is positive (light right); with PanSign=-1, servo should move LEFT (lower angle).
+	pos, _ := pan.Position(context.Background(), nil)
+	test.That(t, pos, test.ShouldBeLessThan, uint32(90))
+}
