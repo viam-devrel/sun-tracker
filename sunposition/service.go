@@ -27,38 +27,6 @@ func init() {
 	)
 }
 
-type Config struct {
-	/*
-		Put config attributes here. There should be public/exported fields
-		with a `json` parameter at the end of each attribute.
-
-		Example config struct:
-			type Config struct {
-				Pin   string `json:"pin"`
-				Board string `json:"board"`
-				MinDeg *float64 `json:"min_angle_deg,omitempty"`
-			}
-
-		If your model does not need a config, replace *Config in the init
-		function with resource.NoNativeConfig
-	*/
-}
-
-// Validate ensures all parts of the config are valid and important fields exist.
-// Returns three values:
-//  1. Required dependencies: other resources that must exist for this resource to work.
-//  2. Optional dependencies: other resources that may exist but are not required.
-//  3. An error if any Config fields are missing or invalid.
-//
-// The `path` parameter indicates
-// where this resource appears in the machine's JSON configuration
-// (for example, "components.0"). You can use it in error messages
-// to indicate which resource has a problem.
-func (cfg *Config) Validate(path string) ([]string, []string, error) {
-	// Add config validation code here
-	return nil, nil, nil
-}
-
 type service struct {
 	resource.AlwaysRebuild
 	resource.Named
