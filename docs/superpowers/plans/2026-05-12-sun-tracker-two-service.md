@@ -757,7 +757,7 @@ func TestDetectionsFromCamera_FourInFixedOrder(t *testing.T) {
     }
     cfg := &Config{Camera: "my_camera"}
 
-    svc, err := newServiceWithConfig(context.Background(), deps, conf, cfg, logger)
+    svc, err := NewServiceWithConfig(context.Background(), deps, conf, cfg, logger)
     test.That(t, err, test.ShouldBeNil)
     defer svc.Close(context.Background())
 
@@ -785,7 +785,7 @@ func TestDetectionsFromCamera_FourInFixedOrder(t *testing.T) {
 - [ ] **Step 2: Run test — expect failure**
 
 Run: `go test ./sunposition -run TestDetectionsFromCamera_FourInFixedOrder -v`
-Expected: FAIL — undefined: newServiceWithConfig, or no detections returned.
+Expected: FAIL — undefined: NewServiceWithConfig, or no detections returned.
 
 - [ ] **Step 3: Implement service constructor + `DetectionsFromCamera` + `Detections` + `CaptureAllFromCamera` + `GetProperties`**
 
@@ -842,12 +842,13 @@ func newService(
     if err != nil {
         return nil, err
     }
-    return newServiceWithConfig(ctx, deps, conf, cfg, logger)
+    return NewServiceWithConfig(ctx, deps, conf, cfg, logger)
 }
 
-// newServiceWithConfig is the test-friendly entrypoint: caller has already
-// converted to a typed *Config.
-func newServiceWithConfig(
+// NewServiceWithConfig is the test-friendly + CLI-friendly entrypoint: caller
+// has already converted to a typed *Config. Exported so cmd/cli/main.go can
+// drive a smoke test without going through resource registration.
+func NewServiceWithConfig(
     ctx context.Context,
     deps resource.Dependencies,
     conf resource.Config,
@@ -990,9 +991,9 @@ func (s *service) Close(context.Context) error { return nil }
 
 Note: this rewrite replaces the old stub in `service.go`. The shape uses the `vision.Service` interface accessor methods (`Detection.Label()`, `.Score()`, `.BoundingBox()`) — check `~/go/pkg/mod/go.viam.com/rdk@v0.125.0/vision/objectdetection/detection.go` for exact accessor names if the test won't compile.
 
-- [ ] **Step 4: Update `cmd/cli/main.go` to use `newServiceWithConfig`**
+- [ ] **Step 4: Update `cmd/cli/main.go` to use `NewServiceWithConfig`**
 
-The CLI was already pointing at a `NewSunPosition` factory; this is now `newServiceWithConfig`. Adjust the import + call. Empty `Camera` field will fail validation, but the CLI just needs to compile and exit cleanly — set `Camera: "stub"` and accept that it'll error at runtime; the CLI is a smoke test, not a real exerciser.
+The CLI was already pointing at a `NewSunPosition` factory; this is now `NewServiceWithConfig`. Adjust the import + call. Empty `Camera` field will fail validation, but the CLI just needs to compile and exit cleanly — set `Camera: "stub"` and accept that it'll error at runtime; the CLI is a smoke test, not a real exerciser.
 
 - [ ] **Step 5: Run service test + build**
 
@@ -1010,7 +1011,7 @@ func TestGetProperties_DetectionOnly(t *testing.T) {
     conf := resource.Config{Name: "sun_vision", Model: Model}
     cfg := &Config{Camera: "my_camera"}
 
-    svc, err := newServiceWithConfig(context.Background(), deps, conf, cfg, logger)
+    svc, err := NewServiceWithConfig(context.Background(), deps, conf, cfg, logger)
     test.That(t, err, test.ShouldBeNil)
 
     props, err := svc.GetProperties(context.Background(), nil)
