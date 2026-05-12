@@ -97,11 +97,129 @@ func newService(
 	return s, nil
 }
 
-// runLoop is implemented in Task 4.5. Empty body for now so the goroutine
-// starts and exits immediately on context cancel.
 func (s *service) runLoop(ctx context.Context) {
 	defer s.wg.Done()
-	<-ctx.Done()
+	period := time.Duration(float64(time.Second) / s.cfg.LoopHz)
+	ticker := time.NewTicker(period)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now := <-ticker.C:
+			s.step(ctx, now)
+		}
+	}
+}
+
+func (s *service) step(ctx context.Context, now time.Time) {
+	s.mu.RLock()
+	enabled := s.state.Enabled
+	prevPan := s.lastPanErr
+	prevTilt := s.lastTiltErr
+	prevTime := s.lastTime
+	s.mu.RUnlock()
+	if !enabled {
+		return
+	}
+
+	dets, err := s.visionSvc.DetectionsFromCamera(ctx, s.cfg.Camera, nil)
+	if err != nil {
+		s.logger.Debugw("vision DetectionsFromCamera failed", "err", err)
+		return
+	}
+	panErr, tiltErr, brightness, ok := detectionsToErrors(dets)
+	if !ok {
+		s.logger.Warnw("malformed detection set from vision service", "count", len(dets))
+		brightness = 0
+	}
+
+	if brightness < s.cfg.MinBrightness {
+		s.updateState(panErr, tiltErr, brightness, false, s.lastPan(), s.lastTilt())
+		return
+	}
+
+	dt := now.Sub(prevTime).Seconds()
+	if prevTime.IsZero() {
+		dt = 1.0 / s.cfg.LoopHz
+	}
+	panStep := control(panErr, prevPan, dt, s.cfg.Kp, s.cfg.Kd, s.cfg.Deadband, s.cfg.MaxStepDegs)
+	tiltStep := control(tiltErr, prevTilt, dt, s.cfg.Kp, s.cfg.Kd, s.cfg.Deadband, s.cfg.MaxStepDegs)
+
+	locked := panStep == 0 && tiltStep == 0
+	var panNow, tiltNow uint32
+	if locked {
+		panNow = s.tryReadServo(ctx, s.pan, s.lastPan())
+		tiltNow = s.tryReadServo(ctx, s.tilt, s.lastTilt())
+	} else {
+		panNow, tiltNow = s.driveServos(ctx, panStep, tiltStep)
+	}
+
+	s.mu.Lock()
+	s.lastPanErr = panErr
+	s.lastTiltErr = tiltErr
+	s.lastTime = now
+	s.mu.Unlock()
+
+	s.updateState(panErr, tiltErr, brightness, locked, panNow, tiltNow)
+}
+
+func (s *service) lastPan() uint32 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.state.PanDeg
+}
+
+func (s *service) lastTilt() uint32 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.state.TiltDeg
+}
+
+func (s *service) tryReadServo(ctx context.Context, sv servo.Servo, fallback uint32) uint32 {
+	pos, err := sv.Position(ctx, nil)
+	if err != nil {
+		s.logger.Debugw("servo Position failed", "err", err)
+		return fallback
+	}
+	return pos
+}
+
+func (s *service) driveServos(ctx context.Context, panStep, tiltStep float64) (uint32, uint32) {
+	panNow := s.tryReadServo(ctx, s.pan, s.lastPan())
+	tiltNow := s.tryReadServo(ctx, s.tilt, s.lastTilt())
+
+	panTarget := stepClamp(panNow, panStep*float64(s.cfg.PanSign), s.cfg.PanMin, s.cfg.PanMax)
+	tiltTarget := stepClamp(tiltNow, tiltStep*float64(s.cfg.TiltSign), s.cfg.TiltMin, s.cfg.TiltMax)
+
+	if panTarget != panNow {
+		if err := s.pan.Move(ctx, panTarget, nil); err != nil {
+			s.logger.Debugw("pan Move failed", "err", err)
+		} else {
+			panNow = panTarget
+		}
+	}
+	if tiltTarget != tiltNow {
+		if err := s.tilt.Move(ctx, tiltTarget, nil); err != nil {
+			s.logger.Debugw("tilt Move failed", "err", err)
+		} else {
+			tiltNow = tiltTarget
+		}
+	}
+	return panNow, tiltNow
+}
+
+func (s *service) updateState(panErr, tiltErr, brightness float64, locked bool, panDeg, tiltDeg uint32) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.state.PanErr = panErr
+	s.state.TiltErr = tiltErr
+	s.state.Brightness = brightness
+	s.state.Locked = locked
+	s.state.PanDeg = panDeg
+	s.state.TiltDeg = tiltDeg
+	s.state.LastUpdate = time.Now()
 }
 
 func (s *service) Close(ctx context.Context) error {
