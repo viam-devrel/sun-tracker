@@ -1,7 +1,7 @@
 package main
 
 import (
-	"suntracker"
+	"github.com/viam-devrel/sun-tracker"
 
 	"go.viam.com/rdk/module"
 	"go.viam.com/rdk/resource"

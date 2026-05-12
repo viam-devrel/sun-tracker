@@ -1,4 +1,4 @@
-module suntracker
+module github.com/viam-devrel/sun-tracker
 
 go 1.25.9
 

@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"suntracker"
+	"github.com/viam-devrel/sun-tracker"
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/resource"
 	vision "go.viam.com/rdk/services/vision"
