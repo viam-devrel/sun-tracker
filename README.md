@@ -8,7 +8,7 @@ For design rationale, control-law derivation, YCbCr fast-path details, and the t
 
 ## `devrel:sun-tracker:sun-position`
 
-Vision service (`rdk:service:vision`). Returns four `objectdetection.Detection`s — one per image quadrant — with each `Score` set to that quadrant's mean luma (normalized to [0, 1] as a brightness proxy).
+Vision service (`rdk:service:vision`). Returns four detections — one per image quadrant — with each `Score` set to that quadrant's mean luma (normalized to [0, 1] as a brightness proxy).
 
 ### Configuration
 
@@ -18,7 +18,11 @@ Vision service (`rdk:service:vision`). Returns four `objectdetection.Detection`s
 }
 ```
 
-`camera` is required; the service resolves it from `depends_on` at construction.
+The following attributes are available for the arm component:
+
+| Name               | Type     | Inclusion    | Description                                                                                                                                                            |
+| ------------------ | -------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `camera`             | string   | **Required** | The name of the camera component to use as the default camera for detections. |
 
 ### Implemented methods
 
@@ -63,37 +67,33 @@ Generic service (`rdk:service:generic`). Polls a vision service at `loop_hz`, de
 
 ```json
 {
-  "name": "sun_tracker",
-  "type": "generic",
-  "model": "devrel:sun-tracker:sun-servo-tracker",
-  "depends_on": ["sun_vision", "my_camera", "pan_servo", "tilt_servo"],
-  "attributes": {
-    "vision_service": "sun_vision",
-    "camera":         "my_camera",
-    "pan_servo":      "pan_servo",
-    "tilt_servo":     "tilt_servo",
-
-    "kp":             8.0,
-    "kd":             0.0,
-    "deadband":       0.05,
-    "min_brightness": 30.0,
-
-    "pan_sign":       1,
-    "tilt_sign":      1,
-    "pan_min":        0,
-    "pan_max":        180,
-    "tilt_min":       0,
-    "tilt_max":       180,
-
-    "loop_hz":        10,
-    "max_step_degs":  5.0
-  }
+  "vision_service": "sun_vision",
+  "camera":         "my_camera",
+  "pan_servo":      "pan_servo",
+  "tilt_servo":     "tilt_servo",
 }
 ```
+| Name               | Type     | Inclusion    | Description                                                                                                                                                            |
+| ------------------ | -------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `camera`             | string   | **Required** | The name of the camera component to use as the camera for detections. |
+| `vision_service`             | string   | **Required** | The name of the vision service to use for detections. |
+| `pan_servo`             | string   | **Required** | The name of the servo component to use as the pan direction. |
+| `tilt_servo`             | string   | **Required** | The name of the servo component to use as the tilt direction. |
+| `kp`             | number   | Optional | The PID loop's proportional value. |
+| `kd`             | number   | Optional | The PID loop's derivative value. |
+| `deadband`             | number   | Optional | The percentage for significant change in movement. |
+| `min_brightness`             | number   | Optional | The name of the camera component to use as the default camera for detections. |
+| `pan_sign`             | number   | Optional | Flip the pan servo direction |
+| `tilt_sign`             | number   | Optional | Flip the tilt servo direction |
+| `pan_min`             | number   | Optional | The minimum angle for the pan servo |
+| `pan_max`             | number   | Optional | The max angle for the pan servo. |
+| `tilt_min`             | number   | Optional | The minimum angle for the tilt servo. |
+| `tilt_max`             | number   | Optional | The max angle for the tilt servo. |
+| `loop_hz`             | number   | Optional | The frequency of the control loop, number of times per second to check the vision service. |
+| `max_step_degs`             | number   | Optional | The max step change for servo movement. |
 
-`vision_service`, `camera`, `pan_servo`, and `tilt_servo` are all required. `camera` appears in the tracker config even though the tracker does not fetch images directly — the name is forwarded to `DetectionsFromCamera`. Including the camera in `depends_on` guarantees startup ordering.
 
-`pan_sign` / `tilt_sign` (`+1` or `-1`) flip servo direction without rewiring; determine the correct value by experiment (shine a light off-center, observe which way the servo moves).
+`pan_sign` / `tilt_sign` (`1` or `-1`) flip servo direction without rewiring; determine the correct value by experiment (shine a light off-center, observe which way the servo moves).
 
 ### Defaults
 
@@ -166,24 +166,6 @@ Add to the tracker service's resource config to record control state at 5 Hz:
       "capture_methods": [{
         "method": "DoCommand",
         "additional_params": {"command": {"get_state": true}},
-        "capture_frequency_hz": 5
-      }]
-    }
-  }]
-}
-```
-
-**VERIFY** — the exact key for passing a command payload through data-manager capture of `DoCommand` on a generic service (`additional_params.command`) has shifted across RDK versions. Confirm against your vendored RDK before relying on this.
-
-Add to the vision service's resource config to capture frames with detections overlaid at 5 Hz:
-
-```json
-{
-  "service_configs": [{
-    "type": "data_manager",
-    "attributes": {
-      "capture_methods": [{
-        "method": "CaptureAllFromCamera",
         "capture_frequency_hz": 5
       }]
     }

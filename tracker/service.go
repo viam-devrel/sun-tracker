@@ -67,7 +67,7 @@ func newService(
 	}
 	applyDefaults(cfg)
 
-	visionSvc, err := vision.FromDependencies(deps, cfg.VisionService)
+	visionSvc, err := vision.FromProvider(deps, cfg.VisionService)
 	if err != nil {
 		return nil, errors.Join(errors.New("resolving vision service"), err)
 	}

@@ -2,20 +2,22 @@
   "$schema": "https://dl.viam.dev/module.schema.json",
   "module_id": "devrel:sun-tracker",
   "visibility": "public",
-  "url": "",
-  "description": "Sun tracker: brightness-quadrant vision service + servo pan/tilt tracker",
+  "url": "https://github.com/viam-devrel/sun-tracker",
+  "description": "Track the 'sun' using a vision service and pan-tilt servo tracking service.",
   "applications": null,
   "markdown_link": "README.md",
   "models": [
     {
       "api": "rdk:service:vision",
       "model": "devrel:sun-tracker:sun-position",
-      "markdown_link": "README.md"
+      "short_description": "Split an image into four quadrant bounding boxes, with brightness mapped to confidence.",
+      "markdown_link": "README.md#devrelsun-trackersun-position"
     },
     {
       "api": "rdk:service:generic",
       "model": "devrel:sun-tracker:sun-servo-tracker",
-      "markdown_link": "README.md"
+      "short_description": "Control loop for taking in sun-position detections and mapping movement to pan-tilt servos.",
+      "markdown_link": "README.md#devrelsun-trackersun-servo-tracker"
     }
   ],
   "entrypoint": "bin/sun-tracker",

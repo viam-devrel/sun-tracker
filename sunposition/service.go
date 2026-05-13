@@ -63,7 +63,7 @@ func NewServiceWithConfig(
 	cfg *Config,
 	logger logging.Logger,
 ) (vision.Service, error) {
-	cam, err := camera.FromDependencies(deps, cfg.Camera)
+	cam, err := camera.FromProvider(deps, cfg.Camera)
 	if err != nil {
 		return nil, fmt.Errorf("resolve camera %q: %w", cfg.Camera, err)
 	}
