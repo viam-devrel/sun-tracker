@@ -2,8 +2,6 @@
 
 A Viam Go module for a solar-panel tracking demo. It drives a pan/tilt servo pair toward the brightest source in a camera's field of view — typically a handheld flashlight or motorized spotlight standing in for the sun. The module registers two cooperating services: `devrel:sun-tracker:sun-position` (vision) computes per-quadrant brightness from each camera frame, and `devrel:sun-tracker:sun-servo-tracker` (generic) runs the closed-loop PD controller that drives the servos.
 
-For design rationale, control-law derivation, YCbCr fast-path details, and the tuning recipe, see [`.plans/2026-05-12-sun-tracker-two-service-design.md`](.plans/2026-05-12-sun-tracker-two-service-design.md).
-
 ---
 
 ## `devrel:sun-tracker:sun-position`
